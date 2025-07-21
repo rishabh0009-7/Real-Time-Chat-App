@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
 import { useState } from "react";
 import { toast } from "sonner"
+import { Toaster } from "sonner";
 
 
 export default function Chat() {
@@ -35,21 +36,7 @@ export default function Chat() {
 
   }
 
-
-
-
-    
-    
-
- const handleCreateRoom =(e:React.FormEvent)=>{
-    e.preventDefault()
-    toast.success("Room created sucessfully")
-     
-    
-
- }
-
-    const handleJoinForm = (e:React.FormEvent)=>{
+const handleJoinForm = (e:React.FormEvent)=>{
         e.preventDefault();
         toast.success("A User has joined the room ")
 
@@ -68,6 +55,20 @@ export default function Chat() {
     <div className="relative min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-20 space-y-10 font-sans overflow-hidden">
       {/* Background */}
       <StarsBackground className="absolute inset-0 z-0" />
+      <Toaster
+  richColors
+  position="bottom-right"
+  theme="dark"
+  toastOptions={{
+    className: "bg-zinc-900 text-white border border-zinc-700 shadow-lg",
+    style: {
+      background: "#18181b",
+      color: "#f4f4f5",
+      border: "1px solid #3f3f46",
+    },
+  }}
+/>
+
 
       {/* Foreground Content */}
       <div className="relative z-10 w-full max-w-md bg-zinc-900 rounded-2xl shadow-2xl p-8 space-y-6 border border-zinc-700">
