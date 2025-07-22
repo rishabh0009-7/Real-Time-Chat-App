@@ -2,30 +2,34 @@
 
 import { Button } from "@/components/ui/button";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Toaster } from "sonner";
+import { useState, useEffect } from "react";
+import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
+import io from "socket.io-client";
+
+const socket = io("http://localhost:3001"); // Your server URL
 
 export default function Chat() {
   const [userName, setUserName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [codeInput, setcodeInput] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
 
-  const router = useRouter(); // ✅ Move this to top-level (fixes crash)
+  const router = useRouter();
 
   function generateRoomCode() {
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     setRoomCode(newCode);
-    toast.success("room code generated ");
+    toast.success("Room code generated!");
+    socket.emit("create-room", newCode); // ✅ notify server of room creation
   }
 
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(roomCode);
-      toast.success("copied to clipboard !");
-    } catch (error) {
-      toast.error("Failed to copy ");
+      toast.success("Copied to clipboard!");
+    } catch {
+      toast.error("Failed to copy.");
     }
   };
 
@@ -33,18 +37,35 @@ export default function Chat() {
     e.preventDefault();
 
     if (!userName || !codeInput) {
-      toast.error("Please enter both the fields ");
-      return; 
+      toast.error("Please enter both your name and room code.");
+      return;
     }
 
-    router.push(`/chat/${codeInput}?name=${encodeURIComponent(userName)}`);
-
-    toast.success("A User has joined the room ");
+    setIsChecking(true);
+    socket.emit("check-room", codeInput.trim().toUpperCase());
   };
+
+  useEffect(() => {
+    const handleRoomExists = (exists: boolean) => {
+      setIsChecking(false);
+
+      if (exists) {
+        toast.success("Joining room...");
+        router.push(`/chat/${codeInput.trim().toUpperCase()}?name=${encodeURIComponent(userName)}`);
+      } else {
+        toast.error("Room doesn't exist.");
+      }
+    };
+
+    socket.on("room-exists", handleRoomExists);
+
+    return () => {
+      socket.off("room-exists", handleRoomExists);
+    };
+  }, [codeInput, userName]);
 
   return (
     <div className="relative min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-20 space-y-10 font-sans overflow-hidden">
-      {/* Background */}
       <StarsBackground className="absolute inset-0 z-0" />
       <Toaster
         richColors
@@ -59,12 +80,8 @@ export default function Chat() {
           },
         }}
       />
-
-      {/* Foreground Content */}
       <div className="relative z-10 w-full max-w-md bg-zinc-900 rounded-2xl shadow-2xl p-8 space-y-6 border border-zinc-700">
-        <h2 className="text-3xl sm:text-4xl font-bold text-center text-white drop-shadow">
-          🔐 Join a Chat Room
-        </h2>
+        <h2 className="text-3xl sm:text-4xl font-bold text-center">🔐 Join a Chat Room</h2>
 
         <form className="space-y-4" onSubmit={handleJoinForm}>
           <input
@@ -72,18 +89,21 @@ export default function Chat() {
             placeholder="Enter Your Name"
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
-            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 text-white rounded-lg"
           />
           <input
             type="text"
             placeholder="Enter Room Code"
             value={codeInput}
-            onChange={(e) => setcodeInput(e.target.value)}
-            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            onChange={(e) => setcodeInput(e.target.value.toUpperCase())}
+            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 text-white rounded-lg uppercase tracking-widest"
           />
-
-          <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-lg py-3 rounded-lg shadow-lg transition-transform duration-300 hover:scale-105">
-            🚪 Join Room
+          <Button
+            type="submit"
+            disabled={isChecking}
+            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600"
+          >
+            {isChecking ? "Checking..." : "🚪 Join Room"}
           </Button>
         </form>
       </div>
@@ -91,7 +111,7 @@ export default function Chat() {
       <div className="relative z-10 pt-4">
         <Button
           onClick={generateRoomCode}
-          className="bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-700 hover:to-red-700 text-white text-lg px-8 py-3 rounded-full font-semibold shadow-lg transition-transform duration-300 ease-in-out hover:scale-105"
+          className="bg-gradient-to-r from-pink-600 to-red-600 text-white px-8 py-3 rounded-full"
         >
           ✨ Create Room
         </Button>
@@ -104,7 +124,7 @@ export default function Chat() {
             <Button
               onClick={copyToClipboard}
               variant="secondary"
-              className="w-full bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-md mt-2"
+              className="w-full bg-zinc-700 hover:bg-zinc-600"
             >
               📋 Copy to Clipboard
             </Button>

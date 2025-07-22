@@ -1,62 +1,69 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import useChatSocket from "@/hooks/useChatSocket";
+import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
 
-export default function ChatRoomPage() {
-  const router = useRouter();
-  const roomCode = router.query?.roomcode as string;
-  const [name, setName] = useState("");
-  const [input, setInput] = useState("");
+export default function ChatPage({ params }: { params: { roomcode: string } }) {
+  const searchParams = useSearchParams();
+  const userName = searchParams.get("name") || "Anonymous";
 
-  const { messages, sendMessage } = useChatSocket(roomCode || "", name);
-
- 
+  const { messages, sendMessage, userCount } = useChatSocket(params.roomcode, userName);
+  const [text, setText] = useState("");
+  const messageListRef = useRef<HTMLDivElement>(null);
 
   const handleSend = () => {
-    if (input.trim()) {
-      sendMessage(input);
-      setInput("");
-    }
+    if (text.trim() === "") return;
+    sendMessage(text);
+    setText("");
   };
 
+  useEffect(() => {
+    if (messageListRef.current) {
+      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+    }
+  }, [messages]);
+
   return (
-    <div className="flex flex-col h-screen p-4 bg-gray-100">
-      <h1 className="text-xl font-bold mb-2">
-        Room Code: <span className="text-blue-600">{roomCode}</span>
-      </h1>
+    <div className="relative min-h-screen bg-black text-white flex items-center justify-center overflow-hidden px-4 py-8">
+      <StarsBackground className="absolute inset-0 z-0" />
 
-      <div className="flex-1 overflow-y-auto bg-white rounded-md shadow p-4 space-y-2">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`${
-              msg.user === name ? "text-right" : "text-left"
-            }`}
-          >
-            <p className="text-sm text-gray-600">
-              <strong>{msg.user}</strong>
-            </p>
-            <p className="text-base">{msg.text}</p>
-          </div>
-        ))}
-      </div>
+      <div className="relative z-10 w-full max-w-xl bg-zinc-900 rounded-2xl shadow-xl border border-zinc-700 p-6 space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">
+            💬 Chat Room: <span className="text-blue-400">{params.roomcode}</span>
+          </h1>
+          <p className="text-sm text-gray-400">{userCount} users in room</p>
+        </div>
 
-      <div className="mt-4 flex gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          className="flex-1 border rounded-md px-4 py-2"
-          placeholder="Type your message..."
-        />
-        <button
-          onClick={handleSend}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md"
+        <div
+          ref={messageListRef}
+          className="h-[400px] overflow-y-auto bg-zinc-800 rounded-lg p-4 space-y-3 border border-zinc-700 shadow-inner"
         >
-          Send
-        </button>
+          {messages.map((msg, idx) => (
+            <div key={idx} className={msg.userId === userName ? "text-right" : "text-left"}>
+              <p className="text-sm text-gray-400 font-medium">{msg.userId}</p>
+              <p className="text-base text-white">{msg.text}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            className="flex-1 px-4 py-2 rounded-md bg-zinc-800 border border-zinc-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+            placeholder="Type a message..."
+          />
+          <button
+            onClick={handleSend}
+            className="px-4 py-2 rounded-md bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-sm font-semibold shadow-md"
+          >
+            🚀 Send
+          </button>
+        </div>
       </div>
     </div>
   );

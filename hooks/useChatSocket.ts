@@ -1,43 +1,48 @@
-// hooks/useChatSocket.ts
 import { useEffect, useState, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 
-// Defined message type
-type ChatMessage = {
-  user: string;
+interface Message {
+  userId: string;
   text: string;
-};
+}
 
-export default function useChatSocket(roomCode: string, name: string) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export default function useChatSocket(room: string, userId: string) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [userCount, setUserCount] = useState<number>(1);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io(); 
+    const socket = io({
+      path: "/api/socketio",
+    });
+
     socketRef.current = socket;
 
-    // Join the chat room with name
-    socket.emit("join-room", { room: roomCode, name });
+    socket.emit("join-room", { room, name: userId });
 
-    // Receive message
-    socket.on("receive-message", (msg: ChatMessage) => {
+    socket.on("receive-message", (msg: Message) => {
       setMessages((prev) => [...prev, msg]);
     });
 
-//  display when someone joins
-    socket.on("user-joined", (notice: string) => {
-      setMessages((prev) => [...prev, { user: "System", text: notice }]);
+    socket.on("user-count", (count: number) => {
+      setUserCount(count);
+    });
+
+    socket.on("room-invalid", () => {
+      alert("❌ Invalid room code!");
+      window.location.href = "/chat";
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [roomCode, name]);
+  }, [room, userId]);
 
-  // Send message to room
-  const sendMessage = (message: string) => {
-    socketRef.current?.emit("send-message", { room: roomCode, message });
+  const sendMessage = (text: string) => {
+    if (socketRef.current) {
+      socketRef.current.emit("send-message", { room, message: text });
+    }
   };
 
-  return { messages, sendMessage };
+  return { messages, sendMessage, userCount };
 }
