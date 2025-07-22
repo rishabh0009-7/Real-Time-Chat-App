@@ -2,21 +2,55 @@
 
 import { Button } from "@/components/ui/button";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
+import { io } from "socket.io-client";
 
 export default function Chat() {
   const [userName, setUserName] = useState("");
   const [roomCode, setRoomCode] = useState("");
-  const [codeInput, setcodeInput] = useState("");
+  const [codeInput, setCodeInput] = useState("");
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
   const router = useRouter();
 
   function generateRoomCode() {
+    setIsCreatingRoom(true);
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoomCode(newCode);
-    toast.success("Room code generated!");
+    
+    // Connect to socket to register the room
+    const socket = io({
+      path: "/api/socketio",
+    });
+
+    socket.on("connect", () => {
+      // Create room on server
+      socket.emit("create-room", newCode);
+    });
+
+    socket.on("room-created", (code: string) => {
+      setRoomCode(code);
+      setIsCreatingRoom(false);
+      toast.success("Room code generated and registered!");
+      socket.disconnect();
+    });
+
+    socket.on("connect_error", () => {
+      setIsCreatingRoom(false);
+      toast.error("Failed to create room. Please try again.");
+      socket.disconnect();
+    });
+
+    // Fallback timeout
+    setTimeout(() => {
+      if (isCreatingRoom) {
+        setRoomCode(newCode);
+        setIsCreatingRoom(false);
+        toast.success("Room code generated!");
+        socket.disconnect();
+      }
+    }, 3000);
   }
 
   const copyToClipboard = async () => {
@@ -31,13 +65,52 @@ export default function Chat() {
   const handleJoinForm = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!userName || !codeInput) {
-      toast.error("Please enter both your name and room code.");
+    if (!userName.trim()) {
+      toast.error("Please enter your name.");
       return;
     }
 
-    router.push(`/chat/${codeInput.trim().toUpperCase()}?name=${encodeURIComponent(userName)}`);
+    if (!codeInput.trim()) {
+      toast.error("Please enter a room code.");
+      return;
+    }
+
+    // Basic format validation
+    const cleanCode = codeInput.trim().toUpperCase();
+    if (cleanCode.length < 4 || cleanCode.length > 8) {
+      toast.error("Please enter a valid room code.");
+      return;
+    }
+
+    // Redirect to chat room - validation will happen on the server
+    router.push(`/chat/${cleanCode}?name=${encodeURIComponent(userName.trim())}`);
   };
+
+  const handleJoinCreatedRoom = () => {
+    if (!userName.trim()) {
+      toast.error("Please enter your name first.");
+      return;
+    }
+
+    if (!roomCode) {
+      toast.error("No room code available. Please create a room first.");
+      return;
+    }
+
+    router.push(`/chat/${roomCode}?name=${encodeURIComponent(userName.trim())}`);
+  };
+
+  // Clear room code when component unmounts or page refreshes
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      setRoomCode("");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-20 space-y-10 font-sans overflow-hidden">
@@ -65,17 +138,20 @@ export default function Chat() {
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
             className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 text-white rounded-lg"
+            maxLength={50}
           />
           <input
             type="text"
             placeholder="Enter Room Code"
             value={codeInput}
-            onChange={(e) => setcodeInput(e.target.value.toUpperCase())}
+            onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
             className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 text-white rounded-lg uppercase tracking-widest"
+            maxLength={8}
           />
           <Button
             type="submit"
             className="w-full bg-gradient-to-r from-indigo-600 to-purple-600"
+            disabled={!userName.trim() || !codeInput.trim()}
           >
             🚀 Join Room
           </Button>
@@ -85,9 +161,10 @@ export default function Chat() {
       <div className="relative z-10 pt-4">
         <Button
           onClick={generateRoomCode}
-          className="bg-gradient-to-r from-pink-600 to-red-600 text-white px-8 py-3 rounded-full"
+          disabled={isCreatingRoom}
+          className="bg-gradient-to-r from-pink-600 to-red-600 text-white px-8 py-3 rounded-full disabled:opacity-50"
         >
-          ✨ Create Room
+          {isCreatingRoom ? "⏳ Creating..." : "✨ Create Room"}
         </Button>
       </div>
 
@@ -95,13 +172,22 @@ export default function Chat() {
         <div className="relative z-10 pt-2">
           <div className="mt-2 px-6 py-3 bg-zinc-800 text-white rounded-xl border border-zinc-600 shadow-lg space-y-2 text-center">
             <div className="text-lg font-mono tracking-widest">{roomCode}</div>
-            <Button
-              onClick={copyToClipboard}
-              variant="secondary"
-              className="w-full bg-zinc-700 hover:bg-zinc-600"
-            >
-              📋 Copy to Clipboard
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={copyToClipboard}
+                variant="secondary"
+                className="flex-1 bg-zinc-700 hover:bg-zinc-600"
+              >
+                📋 Copy to Clipboard
+              </Button>
+              <Button
+                onClick={handleJoinCreatedRoom}
+                disabled={!userName.trim()}
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                🚀 Join This Room
+              </Button>
+            </div>
           </div>
         </div>
       )}
