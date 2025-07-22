@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true, // helpful for development
+  reactStrictMode: true, 
   experimental: {
-    serverActions: true,
+    serverActions: {}, 
   },
 };
 
