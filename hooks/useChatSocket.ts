@@ -8,7 +8,6 @@ interface Message {
 
 export default function useChatSocket(room: string, userId: string) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [userCount, setUserCount] = useState<number>(1);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -18,19 +17,12 @@ export default function useChatSocket(room: string, userId: string) {
 
     socketRef.current = socket;
 
+    // Join the specified room
     socket.emit("join-room", { room, name: userId });
 
+    // Listen for incoming messages
     socket.on("receive-message", (msg: Message) => {
       setMessages((prev) => [...prev, msg]);
-    });
-
-    socket.on("user-count", (count: number) => {
-      setUserCount(count);
-    });
-
-    socket.on("room-invalid", () => {
-      alert("❌ Invalid room code!");
-      window.location.href = "/chat";
     });
 
     return () => {
@@ -38,11 +30,12 @@ export default function useChatSocket(room: string, userId: string) {
     };
   }, [room, userId]);
 
+  // Send message to the room
   const sendMessage = (text: string) => {
     if (socketRef.current) {
       socketRef.current.emit("send-message", { room, message: text });
     }
   };
 
-  return { messages, sendMessage, userCount };
+  return { messages, sendMessage };
 }

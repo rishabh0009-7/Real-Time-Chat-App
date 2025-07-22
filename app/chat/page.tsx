@@ -2,18 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
-import io from "socket.io-client";
-
-const socket = io("http://localhost:3001"); // Your server URL
 
 export default function Chat() {
   const [userName, setUserName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [codeInput, setcodeInput] = useState("");
-  const [isChecking, setIsChecking] = useState(false);
 
   const router = useRouter();
 
@@ -21,7 +17,6 @@ export default function Chat() {
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     setRoomCode(newCode);
     toast.success("Room code generated!");
-    socket.emit("create-room", newCode); // ✅ notify server of room creation
   }
 
   const copyToClipboard = async () => {
@@ -41,28 +36,8 @@ export default function Chat() {
       return;
     }
 
-    setIsChecking(true);
-    socket.emit("check-room", codeInput.trim().toUpperCase());
+    router.push(`/chat/${codeInput.trim().toUpperCase()}?name=${encodeURIComponent(userName)}`);
   };
-
-  useEffect(() => {
-    const handleRoomExists = (exists: boolean) => {
-      setIsChecking(false);
-
-      if (exists) {
-        toast.success("Joining room...");
-        router.push(`/chat/${codeInput.trim().toUpperCase()}?name=${encodeURIComponent(userName)}`);
-      } else {
-        toast.error("Room doesn't exist.");
-      }
-    };
-
-    socket.on("room-exists", handleRoomExists);
-
-    return () => {
-      socket.off("room-exists", handleRoomExists);
-    };
-  }, [codeInput, userName]);
 
   return (
     <div className="relative min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-20 space-y-10 font-sans overflow-hidden">
@@ -100,10 +75,9 @@ export default function Chat() {
           />
           <Button
             type="submit"
-            disabled={isChecking}
             className="w-full bg-gradient-to-r from-indigo-600 to-purple-600"
           >
-            {isChecking ? "Checking..." : "🚪 Join Room"}
+            🚀 Join Room
           </Button>
         </form>
       </div>

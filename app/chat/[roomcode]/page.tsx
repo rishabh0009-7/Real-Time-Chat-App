@@ -9,7 +9,7 @@ export default function ChatPage({ params }: { params: { roomcode: string } }) {
   const searchParams = useSearchParams();
   const userName = searchParams.get("name") || "Anonymous";
 
-  const { messages, sendMessage, userCount } = useChatSocket(params.roomcode, userName);
+  const { messages, sendMessage } = useChatSocket(params.roomcode, userName);
   const [text, setText] = useState("");
   const messageListRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +34,6 @@ export default function ChatPage({ params }: { params: { roomcode: string } }) {
           <h1 className="text-2xl font-bold">
             💬 Chat Room: <span className="text-blue-400">{params.roomcode}</span>
           </h1>
-          <p className="text-sm text-gray-400">{userCount} users in room</p>
         </div>
 
         <div
