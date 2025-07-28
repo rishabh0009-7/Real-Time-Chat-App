@@ -16,12 +16,11 @@ interface ChatPageProps {
   // searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-// All React Hooks must be called unconditionally at the top level of the component.
-// Conditional logic for rendering should come after hook calls.
+
 export default function ChatPage({ params }: ChatPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const userName = searchParams!.get("name") || "Anonymous";
+  const userName = searchParams.get("name") || "Anonymous";
 
   // Directly use params.roomcode, as it's expected to be available
   // for client components in the App Router.
@@ -33,7 +32,9 @@ export default function ChatPage({ params }: ChatPageProps) {
     userCount,
     typingUsers,
     handleTyping,
-    leaveRoom // 'leaveRoom' is assigned a value but never used in the component's return or direct effects
+    // leaveRoom is not currently used in this component's render or effects.
+    // If you intend to use it (e.g., for a "Leave Chat" button), uncomment it.
+    // leaveRoom
   } = useChatSocket(params.roomcode, userName);
 
   const [text, setText] = useState("");
@@ -101,18 +102,7 @@ export default function ChatPage({ params }: ChatPageProps) {
     }
   }, [roomError]);
 
-  // The 'leaveRoom' function is currently not directly used in this component's JSX or effects.
-  // If you intend to have a "Leave Chat" button or a cleanup logic on unmount,
-  // you should add a call to `leaveRoom` within a click handler or a useEffect cleanup function.
-  // Example for cleanup on unmount:
-  // useEffect(() => {
-  //   return () => {
-  //     // This will be called when the component unmounts.
-  //     // Ensure your useChatSocket hook correctly handles this
-  //     // so it's not trying to emit on a disconnected socket.
-  //     // leaveRoom({ room: params.roomcode });
-  //   };
-  // }, [leaveRoom, params.roomcode]);
+ 
 
 
   // Show error state if room is invalid (This conditional return is allowed AFTER all hooks)
