@@ -4,24 +4,34 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import useChatSocket from "@/hooks/useChatSocket";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
-import { toast } from "sonner";
+import { toast } from "sonner"; // Assuming sonner is installed
 
-export default function ChatPage({ params }: { params: { roomcode: string } }) {
+// Define the props interface explicitly for this page component
+interface ChatPageProps {
+  params: {
+    roomcode: string;
+  };
+  // If your page also received `searchParams`, you would add them here:
+  // searchParams: { [key: string]: string | string[] | undefined };
+}
+
+// Update the function signature to use the explicit interface
+export default function ChatPage({ params }: ChatPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const userName = searchParams.get("name") || "Anonymous";
 
-  const { 
-    messages, 
-    sendMessage, 
-    isConnected, 
-    roomError, 
+  const {
+    messages,
+    sendMessage,
+    isConnected,
+    roomError,
     userCount,
     typingUsers,
     handleTyping,
-    leaveRoom
+    leaveRoom // 'leaveRoom' is assigned a value but never used in the component's return or direct effects
   } = useChatSocket(params.roomcode, userName);
-  
+
   const [text, setText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -29,16 +39,16 @@ export default function ChatPage({ params }: { params: { roomcode: string } }) {
 
   const handleSend = () => {
     if (text.trim() === "" || !isConnected || roomError) return;
-    
+
     sendMessage(text);
     setText("");
     setIsTyping(false);
-    handleTyping(false);
+    handleTyping(false); // Make sure typing state is reset on send
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setText(e.target.value);
-    
+
     // Handle typing indicators
     if (e.target.value.length > 0 && !isTyping) {
       setIsTyping(true);
@@ -63,13 +73,19 @@ export default function ChatPage({ params }: { params: { roomcode: string } }) {
     }
   }, [messages]);
 
-  // Redirect back to home if room error occurs
+  // Use toast for room errors and redirect
   useEffect(() => {
     if (roomError) {
+      // Show toast notification for the error
+      toast.error("Room Error", {
+        description: roomError,
+        duration: 3000, // Display for 3 seconds
+      });
+
       const timer = setTimeout(() => {
         router.push('/');
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [roomError, router]);
@@ -80,6 +96,20 @@ export default function ChatPage({ params }: { params: { roomcode: string } }) {
       inputRef.current.focus();
     }
   }, [roomError]);
+
+  // The 'leaveRoom' function is currently not directly used in this component's JSX or effects.
+  // If you intend to have a "Leave Chat" button or a cleanup logic on unmount,
+  // you should add a call to `leaveRoom` within a click handler or a useEffect cleanup function.
+  // Example for cleanup on unmount:
+  // useEffect(() => {
+  //   return () => {
+  //     // This will be called when the component unmounts.
+  //     // Ensure your useChatSocket hook correctly handles this
+  //     // so it doesn't try to emit on a disconnected socket.
+  //     leaveRoom({ room: params.roomcode });
+  //   };
+  // }, [leaveRoom, params.roomcode]);
+
 
   // Show error state if room is invalid
   if (roomError) {
@@ -120,24 +150,24 @@ export default function ChatPage({ params }: { params: { roomcode: string } }) {
           {messages.map((msg, idx) => (
             <div key={idx} className={msg.userId === userName ? "text-right" : "text-left"}>
               <p className={`text-sm font-medium ${
-                msg.type === "system" 
-                  ? "text-yellow-400 text-center italic" 
-                  : msg.userId === userName 
-                    ? "text-blue-400" 
+                msg.type === "system"
+                  ? "text-yellow-400 text-center italic"
+                  : msg.userId === userName
+                    ? "text-blue-400"
                     : "text-gray-400"
               }`}>
                 {msg.type === "system" ? "" : msg.userId}
               </p>
               <p className={`text-base ${
-                msg.type === "system" 
-                  ? "text-yellow-300 text-center italic" 
+                msg.type === "system"
+                  ? "text-yellow-300 text-center italic"
                   : "text-white"
               }`}>
                 {msg.text}
               </p>
             </div>
           ))}
-          
+
           {/* Typing indicators */}
           {typingUsers.length > 0 && (
             <div className="text-left">
