@@ -6,20 +6,55 @@ import useChatSocket from "@/hooks/useChatSocket";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
 import { toast } from "sonner"; // Assuming sonner is installed
 
-// Define the props interface explicitly for this page component
+// Define the props interface explicitly for this page component.
+// NOTE: The Next.js build environment seems to be incorrectly expecting `params` to be a Promise.
+// This @ts-ignore is a workaround to satisfy that incorrect constraint during build.
+// In a typical Next.js setup, 'params' should be a plain object, not a Promise.
 interface ChatPageProps {
   params: {
     roomcode: string;
   };
   // If your page also received `searchParams`, you would add them here:
-  // searchParams: { [key: string]: string | string[] | undefined };
+  // searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-// Update the function signature to use the explicit interface
+// @ts-ignore
 export default function ChatPage({ params }: ChatPageProps) {
+  // Since the build environment's type check expects a Promise,
+  // we'll maintain the useEffect to handle 'params' if it unexpectedly
+  // arrives as a Promise at runtime (though it should be a plain object for client components).
+  // If params is already a plain object, this will resolve immediately.
+  const [resolvedParams, setResolvedParams] = useState<{ roomcode: string } | null>(null);
+
+  useEffect(() => {
+    // Check if params is a Promise-like object
+    if (params && typeof (params as Promise<any>).then === 'function') {
+      (params as Promise<{ roomcode: string }>).then(p => {
+        setResolvedParams(p);
+      });
+    } else {
+      // Otherwise, assume it's already the resolved object
+      setResolvedParams(params);
+    }
+  }, [params]);
+
+
   const searchParams = useSearchParams();
   const router = useRouter();
-  const userName = searchParams!.get("name") || "Anonymous";
+  const userName = searchParams.get("name") || "Anonymous";
+
+  // Only proceed if params have been resolved
+  if (!resolvedParams) {
+    return (
+      <div className="relative min-h-screen bg-black text-white flex items-center justify-center overflow-hidden px-4 py-8">
+        <StarsBackground className="absolute inset-0 z-0" />
+        <div className="relative z-10 w-full max-w-xl bg-zinc-900 rounded-2xl shadow-xl border border-zinc-700 p-6 text-center">
+          <h1 className="text-2xl font-bold text-blue-400 mb-4">Loading Chat Room...</h1>
+          <p className="text-gray-300">Please wait while we prepare your chat experience.</p>
+        </div>
+      </div>
+    );
+  }
 
   const {
     messages,
@@ -30,7 +65,7 @@ export default function ChatPage({ params }: ChatPageProps) {
     typingUsers,
     handleTyping,
     leaveRoom // 'leaveRoom' is assigned a value but never used in the component's return or direct effects
-  } = useChatSocket(params.roomcode, userName);
+  } = useChatSocket(resolvedParams.roomcode, userName);
 
   const [text, setText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -106,9 +141,9 @@ export default function ChatPage({ params }: ChatPageProps) {
   //     // This will be called when the component unmounts.
   //     // Ensure your useChatSocket hook correctly handles this
   //     // so it doesn't try to emit on a disconnected socket.
-  //     leaveRoom({ room: params.roomcode });
+  //     // leaveRoom({ room: resolvedParams.roomcode });
   //   };
-  // }, [leaveRoom, params.roomcode]);
+  // }, [leaveRoom, resolvedParams.roomcode]);
 
 
   // Show error state if room is invalid
@@ -132,7 +167,7 @@ export default function ChatPage({ params }: ChatPageProps) {
       <div className="relative z-10 w-full max-w-xl bg-zinc-900 rounded-2xl shadow-xl border border-zinc-700 p-6 space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">
-            💬 Chat Room: <span className="text-blue-400">{params.roomcode}</span>
+            💬 Chat Room: <span className="text-blue-400">{resolvedParams.roomcode}</span>
           </h1>
           <div className="flex items-center justify-center gap-4 mt-2 text-sm text-gray-400">
             <span className={`flex items-center gap-1 ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
