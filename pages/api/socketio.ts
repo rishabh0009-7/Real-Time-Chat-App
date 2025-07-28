@@ -34,6 +34,9 @@ interface JoinRoomPayload {
   room: string;
   name: string;
 }
+interface LeaveRoomPayload {
+  room: string;
+}
 
 interface SendMessagePayload {
   room: string;

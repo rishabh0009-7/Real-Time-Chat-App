@@ -19,7 +19,7 @@ interface ChatPageProps {
 export default function ChatPage({ params }: ChatPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const userName = searchParams.get("name") || "Anonymous";
+  const userName = searchParams!.get("name") || "Anonymous";
 
   const {
     messages,
