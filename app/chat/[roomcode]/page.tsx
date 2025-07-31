@@ -4,20 +4,21 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import useChatSocket from "@/hooks/useChatSocket";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
-import { toast } from "sonner"; 
+import { toast } from "sonner"; // Assuming sonner is installed
 
 // Updated interface to match Next.js 15 App Router requirements
 interface ChatPageProps {
   params: Promise<{
     roomcode: string;
   }>;
-
+  // If your page also received `searchParams`, you would add them here:
+  // searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default function ChatPage({ params }: ChatPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const userName = searchParams.get("name") || "Anonymous";
+  const userName = searchParams?.get("name") || "Anonymous";
 
   // State to hold the resolved params
   const [roomcode, setRoomcode] = useState<string>("");
@@ -39,7 +40,9 @@ export default function ChatPage({ params }: ChatPageProps) {
     userCount,
     typingUsers,
     handleTyping,
-    
+    // leaveRoom is not currently used in this component's render or effects.
+    // If you intend to use it (e.g., for a "Leave Chat" button), uncomment it.
+    // leaveRoom
   } = useChatSocket(roomcode, userName);
 
   const [text, setText] = useState("");
