@@ -1,31 +1,36 @@
 import { Server as SocketIOServer, Socket } from "socket.io"; // Alias Server to avoid conflict with Node.js http.Server
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { Server as HTTPServer } from 'http'; // Import Node.js http server type
+import type { Socket as NetSocket } from 'net'; // Import Node.js net socket type
 
 // 1. Define the type for the Node.js server with the attached Socket.IO instance
-interface SocketServer extends HTTPServer {
+interface ServerWithIO extends HTTPServer {
   io?: SocketIOServer;
 }
 
-// 2. Extend NextApiResponse to include the socket with the typed server
-interface NextApiResponseWithSocket extends NextApiResponse {
-  socket: {
-    server: SocketServer;
-  };
+// 2. Define the socket type with the custom server
+interface SocketWithIO extends NetSocket {
+  server: ServerWithIO;
 }
 
-// 3. Define custom data for the socket, extending Socket.IO's default Socket
+// 3. Extend NextApiResponse to include the socket with the typed server
+interface NextApiResponseWithSocket extends NextApiResponse {
+  socket: SocketWithIO;
+}
+
+// 4. Define custom data for the socket, extending Socket.IO's default Socket
 interface CustomSocketData {
   username?: string;
   room?: string;
 }
 
-// 4. Create an extended Socket type with our custom data
+// 5. Create an extended Socket type with our custom data
 interface CustomSocket extends Socket {
   data: CustomSocketData;
 }
 
-// 5. Define interfaces for the data payloads of your Socket.IO events
+// 6. Define interfaces for the data payloads of your Socket.IO events
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface CreateRoomPayload {
   roomCode: string;
 }
@@ -34,6 +39,7 @@ interface JoinRoomPayload {
   room: string;
   name: string;
 }
+
 interface LeaveRoomPayload {
   room: string;
 }
@@ -59,6 +65,7 @@ interface RoomUsersUpdatePayload {
   count: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface RoomErrorPayload {
   message: string;
 }
