@@ -4,26 +4,33 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import useChatSocket from "@/hooks/useChatSocket";
 import { StarsBackground } from "@/components/animate-ui/backgrounds/stars";
-import { toast } from "sonner"; // Assuming sonner is installed
+import { toast } from "sonner"; 
 
-// Define the props interface explicitly for this page component.
-// For client components in Next.js App Router, 'params' is typically a plain object.
+// Updated interface to match Next.js 15 App Router requirements
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     roomcode: string;
-  };
-  // If your page also received `searchParams`, you would add them here:
-  // searchParams?: { [key: string]: string | string[] | undefined };
-}
+  }>;
 
+}
 
 export default function ChatPage({ params }: ChatPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const userName = searchParams.get("name") || "Anonymous";
 
-  // Directly use params.roomcode, as it's expected to be available
-  // for client components in the App Router.
+  // State to hold the resolved params
+  const [roomcode, setRoomcode] = useState<string>("");
+  const [paramsLoaded, setParamsLoaded] = useState(false);
+
+  // Resolve the params Promise
+  useEffect(() => {
+    params.then((resolvedParams) => {
+      setRoomcode(resolvedParams.roomcode);
+      setParamsLoaded(true);
+    });
+  }, [params]);
+
   const {
     messages,
     sendMessage,
@@ -32,10 +39,8 @@ export default function ChatPage({ params }: ChatPageProps) {
     userCount,
     typingUsers,
     handleTyping,
-    // leaveRoom is not currently used in this component's render or effects.
-    // If you intend to use it (e.g., for a "Leave Chat" button), uncomment it.
-    // leaveRoom
-  } = useChatSocket(params.roomcode, userName);
+    
+  } = useChatSocket(roomcode, userName);
 
   const [text, setText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -102,8 +107,18 @@ export default function ChatPage({ params }: ChatPageProps) {
     }
   }, [roomError]);
 
- 
-
+  // Show loading state while params are being resolved
+  if (!paramsLoaded) {
+    return (
+      <div className="relative min-h-screen bg-black text-white flex items-center justify-center overflow-hidden px-4 py-8">
+        <StarsBackground className="absolute inset-0 z-0" />
+        <div className="relative z-10 w-full max-w-xl bg-zinc-900 rounded-2xl shadow-xl border border-zinc-700 p-6 text-center">
+          <h1 className="text-2xl font-bold mb-4">Loading...</h1>
+          <p className="text-gray-300">Initializing chat room...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show error state if room is invalid (This conditional return is allowed AFTER all hooks)
   if (roomError) {
@@ -126,7 +141,7 @@ export default function ChatPage({ params }: ChatPageProps) {
       <div className="relative z-10 w-full max-w-xl bg-zinc-900 rounded-2xl shadow-xl border border-zinc-700 p-6 space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">
-            💬 Chat Room: <span className="text-blue-400">{params.roomcode}</span>
+            💬 Chat Room: <span className="text-blue-400">{roomcode}</span>
           </h1>
           <div className="flex items-center justify-center gap-4 mt-2 text-sm text-gray-400">
             <span className={`flex items-center gap-1 ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
